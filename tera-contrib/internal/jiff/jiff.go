@@ -5,6 +5,7 @@ package jiff
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,11 +83,14 @@ func initZoneDatabase() {
 	}
 	directories = append(directories, "/usr/share/zoneinfo", "/usr/share/lib/zoneinfo", "/etc/zoneinfo")
 	for _, candidate := range directories {
-		names := readZoneNames(candidate)
-		if len(names) != 0 {
-			zoneCache.directory, zoneCache.names = candidate, names
-			break
+		// As in Jiff, a directory without a readable time zone is passed over for the next one; when none has
+		// one, every lookup reports the zone as missing from the database.
+		names, err := readZoneNames(candidate)
+		if err != nil {
+			continue
 		}
+		zoneCache.directory, zoneCache.names = candidate, names
+		break
 	}
 	zoneCache.namesExpire = time.Now().Add(zoneCacheTTL)
 }
@@ -117,7 +121,8 @@ func GetTimeZone(name string) (TimeZone, error) {
 	}
 	actual, ok := zoneCache.names[lower]
 	if !ok && !now.Before(zoneCache.namesExpire) {
-		if names := readZoneNames(zoneCache.directory); len(names) != 0 {
+		// A failed rescan keeps the names read before, as Jiff's refresh does.
+		if names, err := readZoneNames(zoneCache.directory); err == nil {
 			zoneCache.names = names
 		}
 		zoneCache.namesExpire = now.Add(zoneCacheTTL)
@@ -156,20 +161,29 @@ func GetTimeZone(name string) (TimeZone, error) {
 	return z, nil
 }
 
-func readZoneNames(dir string) map[string]string {
+// readZoneNames maps the lowercase name of every TZif file under dir to its name. Like Jiff's zoneinfo walk it
+// collects as many names as it can: an entry that cannot be listed, opened or read is skipped, and the first such
+// failure is returned only when no name could be read at all (or an error saying that dir holds no TZif file).
+func readZoneNames(dir string) (map[string]string, error) {
 	names := map[string]string{}
 	walkDir := dir
 	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
 		walkDir = resolved
 	}
-	// Like jiff's zoneinfo scan, an entry that cannot be listed, opened or read is simply not a time zone: the walk
-	// skips it and keeps the names it could read, so its own result carries nothing to report.
-	_ = filepath.WalkDir(walkDir, func(path string, d os.DirEntry, err error) error {
+	var firstErr error
+	skip := func(err error) {
+		if firstErr == nil {
+			firstErr = err
+		}
+	}
+	err := filepath.WalkDir(walkDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
+			skip(err)
 			return nil
 		}
 		rel, err := filepath.Rel(walkDir, path)
 		if err != nil {
+			skip(err)
 			return nil
 		}
 		if d.IsDir() {
@@ -180,6 +194,7 @@ func readZoneNames(dir string) map[string]string {
 		}
 		file, err := os.Open(path)
 		if err != nil {
+			skip(err)
 			return nil
 		}
 		var magic [4]byte
@@ -187,12 +202,24 @@ func readZoneNames(dir string) map[string]string {
 		if closeErr := file.Close(); err == nil {
 			err = closeErr
 		}
-		if err == nil && n == 4 && string(magic[:]) == "TZif" {
+		switch {
+		case err == nil && n == 4 && string(magic[:]) == "TZif":
 			names[asciiLower(filepath.ToSlash(rel))] = filepath.ToSlash(rel)
+		case err != nil && !errors.Is(err, io.EOF):
+			skip(err)
 		}
 		return nil
 	})
-	return names
+	if err != nil {
+		skip(err)
+	}
+	if len(names) == 0 {
+		if firstErr == nil {
+			firstErr = errors.New("did not find any TZif files in zoneinfo time zone database")
+		}
+		return nil, firstErr
+	}
+	return names, nil
 }
 
 // Timestamp is an instant with nanosecond resolution.

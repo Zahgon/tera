@@ -127,23 +127,41 @@ func (e *writeError) Error() string { return "error writing the output: " + e.ca
 
 func (e *writeError) Unwrap() error { return e.cause }
 
-// report prints err to stderr as the reference command does (a Tera error followed by one `caused by:` line per
-// source) and returns the exit status for its kind.
+// report writes the report of err to stderr in a single write and returns the exit status for err's kind.
+//
+// stderr is the only stream the command reports failures on, so when that write fails its error cannot be reported
+// anywhere: the command still exits with err's status, which already marks the run as failed and names the error
+// kind, as the reference command does when the write of its report fails.
 func report(err error) int {
+	text, status := reportText(err)
+	if _, werr := os.Stderr.WriteString(text); werr != nil {
+		return status
+	}
+	return status
+}
+
+// reportText returns the report of err as the reference command prints it (the error, then one `caused by:` line per
+// source of a Tera error) and the exit status for its kind.
+func reportText(err error) (string, int) {
 	var ce *commandError
 	if errors.As(err, &ce) {
-		fmt.Fprintln(os.Stderr, ce.Error())
-		return ce.status
+		return ce.Error() + "\n", ce.status
 	}
 	var we *writeError
 	if errors.As(err, &we) {
-		fmt.Fprintln(os.Stderr, we.Error())
-		return 1
+		return we.Error() + "\n", 1
 	}
-	fmt.Fprintln(os.Stderr, err)
+	var b strings.Builder
+	b.WriteString(err.Error() + "\n")
 	for s := errors.Unwrap(err); s != nil; s = errors.Unwrap(s) {
-		fmt.Fprintln(os.Stderr, "caused by: "+s.Error())
+		b.WriteString("caused by: " + s.Error() + "\n")
 	}
+	return b.String(), kindStatus(err)
+}
+
+// kindStatus is the exit status for the kind of a Tera error: 2 syntax, 3 rendering, 4 template not found,
+// 5 component not found, 6 circular extend or include or missing parent, and 1 for any other error.
+func kindStatus(err error) int {
 	if er, ok := err.(*tera.Error); ok {
 		switch er.Kind.(type) {
 		case tera.KindSyntaxError:
@@ -334,7 +352,7 @@ func componentInfo(t *tera.Tera, n string) (string, error) {
 		}
 		d := "-"
 		if v, ok := a.Default(); ok {
-			d, _ = tera.MarshalJSON(v, false)
+			d = jsonText(v)
 		}
 		out += fmt.Sprintf("arg %s type=%s required=%t implicit=%t default=%s\n", a.Name(), typ, a.IsRequired(), a.IsImplicit(), d)
 	}
@@ -344,10 +362,19 @@ func componentInfo(t *tera.Tera, n string) (string, error) {
 	}
 	out += "rest " + rest + "\n"
 	for _, p := range i.Metadata().Iter() {
-		v, _ := tera.MarshalJSON(p.Value, false)
-		out += "meta " + p.Key.String() + " " + v + "\n"
+		out += "meta " + p.Key.String() + " " + jsonText(p.Value) + "\n"
 	}
 	return out, nil
+}
+
+// jsonText is v as compact JSON, or the serialisation error in angle brackets, as the reference command prints a
+// component's defaults and metadata.
+func jsonText(v tera.Value) string {
+	s, err := tera.MarshalJSON(v, false)
+	if err != nil {
+		return "<" + err.Error() + ">"
+	}
+	return s
 }
 func main() {
 	o, msg := parseArgs(os.Args[1:])

@@ -8,7 +8,7 @@ compile_sass = true
 build_search_index = false
 
 title = "Tera"
-description = "Tera - A template engine for Rust inspired by Jinja2 and Django templates"
+description = "Tera - A template engine for Go inspired by Jinja2 and Django templates"
 
 [markdown]
 
