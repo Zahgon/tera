@@ -1,4 +1,3 @@
-target/
 .idea/
 .DS_STORE
 out*
@@ -6,3 +5,10 @@ out*
 CLAUDE.md
 profile.json.gz
 docs/public/
+
+# Go build and profiling artifacts
+/bin/
+*.test
+*.exe
+*.prof
+coverage.out

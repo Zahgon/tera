@@ -1,6 +1,0 @@
-[workspace]
-members = ["tera", "tera-contrib"]
-resolver = "2"
-
-[profile.release]
-debug = true

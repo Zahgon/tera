@@ -5,34 +5,33 @@ insert_anchor_links = "right"
 {% raw %}
 ## Getting started
 
-If you are coming from Tera v1, see the [migration guide](https://github.com/Keats/tera/blob/master/MIGRATION.md).
+Tera for Go requires Go 1.23 or later and uses the standard library. Add the package to your module:
 
-To use Tera in your Rust projects, simply add it to your `Cargo.toml`:
-
-```toml
-tera = "2"
+```sh
+go get github.com/Keats/tera/tera
 ```
 
-By default, Tera only pulls one dependency: `serde`.
+```go
+import "github.com/Keats/tera/tera"
 
-A few features requiring more dependencies are available:
+engine := tera.New()
+```
 
-- `fast`: speed up template rendering (you can also select only some of the features from that feature group)
-- `glob_fs`: allows loading template on the filesystem using a glob
-- `unicode`: if you want Tera to work with graphemes clusters rather than utf-8 characters when iterating on strings
-- `preserve_order`: keep order of insertion for values
+The companion [tera-contrib package](https://github.com/Keats/tera/tree/master/tera-contrib) provides additional filters, functions, and tests. Register its extensions before loading templates:
 
-There is also an additional crate, `tera-contrib`, which contains filters/functions/tests that require third party
-dependencies. See its [README](https://github.com/Keats/tera/tree/master/tera-contrib) for the list of features and
-what's available.
+```go
+import contrib "github.com/Keats/tera/tera-contrib"
+
+contrib.Register(engine)
+```
 
 ## API
 
 ### Adding templates
 
-Let's take the following directory as example.
+Consider this directory:
 
-```bash
+```text
 templates/
   hello.html
   index.html
@@ -41,116 +40,129 @@ templates/
     price.html
 ```
 
-Assuming the Rust file is at the same level as the `templates` folder, we can get a Tera instance that way:
+Load templates from disk with a glob. Names are relative to the glob's fixed directory prefix:
 
-```rust
-use tera::Tera;
-
-let mut tera = Tera::default();
-
-// with the `glob_fs` feature enabled
-tera.load_from_glob("templates/**/*.html")?;
-
-// or by hand
-tera.add_raw_templates(vec![
-    ("hello.html", include_str!("templates/hello.html")),
-    ("index.html", include_str!("templates/index.html")),
-    ("products/product.html", include_str!("templates/products/product.html")),
-    ("products/price.html", include_str!("templates/products/price.html")),
-])?;
+```go
+engine := tera.New()
+if err := engine.LoadFromGlob("templates/**/*.html"); err != nil {
+    return err
+}
 ```
 
-If you need to register custom functions/filters/tests, make sure to do so _before_ adding the templates as otherwise
-you will get an error since they can't be found.
+Or add template source strings directly:
+
+```go
+err := engine.AddRawTemplates([]tera.RawTemplate{
+    {Name: "hello.html", Content: "Hello {{ name }}!"},
+    {Name: "index.html", Content: `{% include "hello.html" %}`},
+    {Name: "products/product.html", Content: "{{ product.name }}"},
+    {Name: "products/price.html", Content: "{{ product.price }}"},
+})
+if err != nil {
+    return err
+}
+```
+
+`AddTemplateFile(path, name)` and `AddTemplateFiles` load individual files; an empty name uses the file path as its template name. `FullReload` reloads files from the last glob while preserving manually added templates. Register custom functions, filters, and tests before adding templates that use them, because Tera validates references when templates are loaded.
 
 ### Rendering a template
 
-You need two things to render a template: a name and a context.
-If you are using globs, Tera will automatically remove the glob prefix from the template names. To use our example from before,
-the template name for the file located at `templates/hello.html` will be `hello.html`.
+Rendering needs a template name and a `*tera.Context`. For the glob above, use `"hello.html"` to render `templates/hello.html`:
 
-The context has to be an instance of `tera::Context`:
+```go
+context := tera.NewContext()
+context.Insert("age", 24)
+context.Insert("product", map[string]any{"name": "Tea", "price": 5})
+// InsertValue avoids converting a Value that is already constructed.
+context.InsertValue("greeting", tera.NormalString("Hello"))
 
-```rust
-use tera::Context;
-
-let mut context = Context::new();
-context.insert("age", &24);
-context.insert("product", &product);
-// if you already have a Value, you can do the following to avoid serialization
-context.insert_value("product2", product_value);
-
-// There is also a `context!` macro which will always serialize
-let context = context! {
-    age => &24,
-    product => &product,
-};
-
-tera.render("hello.html", &context)?;
+output, err := engine.Render("hello.html", context)
+if err != nil {
+    return err
+}
+fmt.Println(output)
 ```
 
-You can also set a global context that will be automatically added to every template render context:
+`Insert` accepts Go scalars, slices, maps, and structs. Struct fields must be exported, and `json` tags control their names. Use `ValueFrom` followed by `ContextFromValue` to construct a context from an entire struct or map with error handling.
 
-```rust
-tera.global_context().insert("name", "John Doe");
+`RenderTo(name, context, writer)` streams output to an `io.Writer`. `RenderBlock` and `RenderComponent` render a named block or component. `RenderStr(source, context, autoescape)` renders source with the current engine's extensions and templates; `tera.OneOff(source, context, autoescape)` uses a fresh engine.
+
+A global context supplies values to every render:
+
+```go
+engine.GlobalContext().Insert("name", "John Doe")
 ```
+
+Values in the render context take precedence over globals.
 
 ### Auto-escaping
-By default, Tera will auto-escape all content in files ending with `".html"`, `".htm"` and `".xml"`.
-Escaping follows the recommendations from [OWASP](https://www.owasp.org/index.php/XSS_(Cross_Site_Scripting)_Prevention_Cheat_Sheet).
 
-You can override that or completely disable auto-escaping by calling the `autoescape_on` method:
+By default, Tera escapes values in templates whose names end in `.html`, `.htm`, or `.xml`.
 
-```rust
-// escape only files ending with `.php.html`
-tera.autoescape_on(vec![".php.html"]);
-// disable autoescaping completely
-tera.autoescape_on(vec![]);
+```go
+// Escape only names ending in .php.html.
+engine.AutoescapeOn([]string{".php.html"})
+// Disable automatic escaping.
+engine.AutoescapeOn(nil)
 ```
 
-Tera does not perform contextual auto-escaping, e.g. by parsing the template to know whether to escape JS, CSS or HTML (see
-<https://rawgit.com/mikesamuel/sanitized-jquery-templates/trunk/safetemplate.html> for more details on that).
+The `safe` template filter marks trusted content as safe. `tera.SafeString` provides the same marker for a Go value. `SetEscapeFn` accepts a `tera.EscapeFn` with signature `func(string, io.Writer) error`, and `ResetEscapeFn` restores HTML escaping.
+
+Tera does not parse HTML to determine whether a value appears in JavaScript, CSS, or another context. Automatic escaping uses the selected escape function for the template.
 
 ### Custom filters, tests and functions
 
-Filters/Tests/Functions have a very similar signature, and they all take at least the same 2 arguments:
+Filters, tests, and functions receive `tera.Kwargs` and `*tera.State`. Filters and tests also receive the value they operate on. The interfaces are:
 
-- [Kwargs](https://docs.rs/tera/latest/tera/struct.Kwargs.html): to extract the keyword arguments, in the right type handling errors automatically
-- [State](https://docs.rs/tera/latest/tera/struct.State.html): to access the current context
-
-Filters and tests take the value it's running on as the first parameter: this parameter can be a classic `Value` or
-any value we can convert to. For example, the simplest filter is the following:
-
-```rust
-pub fn upper(val: &str, _: Kwargs, _: &State) -> String {
-    val.to_uppercase()
+```go
+type Filter interface {
+    Call(tera.Value, tera.Kwargs, *tera.State) (tera.Value, error)
+}
+type Test interface {
+    Call(tera.Value, tera.Kwargs, *tera.State) (bool, error)
+}
+type Function interface {
+    Call(tera.Kwargs, *tera.State) (tera.Value, error)
 }
 ```
 
-This takes a value that needs to be string, anything else will automatically get an error. This also returns a string
-and Tera will automatically convert it to the right type.
+Adapters support plain functions. `TypedFilterValue` converts its input and result, reporting a type error if the input cannot be converted:
 
-While they can be defined as plain functions, they each have a trait so you can implement it for a struct for example.
-Here's an example from `tera-contrib`:
-
-```rust
-#[derive(Debug, Default)]
-pub struct Matching {
-  cache: RwLock<HashMap<String, Regex>>,
-}
-
-impl Test<&str, TeraResult<bool>> for Matching {
-  fn call(&self, val: &str, kwargs: Kwargs, _: &State) -> TeraResult<bool> {
-    let pat = kwargs.must_get::<&str>("pat")?;
-    let regex = get_or_create_regex(&self.cache, pat)?;
-    Ok(regex.is_match(val))
-  }
-}
+```go
+engine.RegisterFilter("uppercase", tera.TypedFilterValue(tera.ArgStr,
+    func(text string, _ tera.Kwargs, _ *tera.State) string {
+        return strings.ToUpper(text)
+    },
+))
 ```
 
-Notice how to get arguments from the `Kwargs` instance. Missing arguments and type mismatch are handled automatically
-for you and will report the error properly without you having to do any work.
-See the docs.rs documentation for more details or look at some examples in [tera-contrib](https://github.com/Keats/tera/tree/master/tera-contrib/src). 
+Use `KwargsMustGet` for a required keyword argument and `KwargsGet` for an optional one. Both accept a conversion function such as `ArgStr`, `ArgBool`, or `ArgI64` and report type or range errors:
+
+```go
+engine.RegisterTest("has_prefix", tera.TypedTest(tera.ArgStr,
+    func(text string, kwargs tera.Kwargs, _ *tera.State) (bool, error) {
+        prefix, err := tera.KwargsMustGet(kwargs, "prefix", tera.ArgStr)
+        if err != nil {
+            return false, err
+        }
+        return strings.HasPrefix(text, prefix), nil
+    },
+))
+
+engine.RegisterFunction("greet", tera.TypedFunction(
+    func(kwargs tera.Kwargs, _ *tera.State) (string, error) {
+        name, err := tera.KwargsMustGet(kwargs, "name", tera.ArgStr)
+        if err != nil {
+            return "", err
+        }
+        return "Hello " + name, nil
+    },
+))
+```
+
+`FilterFunc`, `TestFunc`, and `FunctionFunc` adapt functions that already use `Value`. `TypedFilter` and `TypedFilterResult` support filters that return errors. Stateful extensions can implement the interfaces on a struct, as the contrib regex extensions do.
+
+`State.Get` reads context values, and `State.Escape` and `State.EscapeIfNeeded` apply the current escape settings. A filter taking `StringInput` through `ArgStringInput` can inspect or inherit its input's safety marker. An extension implementing `IsSafe() bool` can declare that its output is safe for automatic escaping.
 
 ## Template
 
@@ -401,7 +413,7 @@ Tera has many [built-in tests](#built-in-tests) that you can use.
 
 ### Functions
 
-Functions are Rust code that return a `Result<Value>` from the given params.
+Functions are Go code that return a `tera.Value` and an `error` from the given params.
 
 They are called like so `{{ get_page(path="hello.md") }}`.
 
@@ -832,7 +844,7 @@ Hello
 {% endcomponent %}
 ```
 
-That metadata is available via the Rust API only, not in the templates.
+That metadata is available via the Go API only (`GetComponentDefinition(name)` and `ComponentInfo.Metadata()`), not in the templates.
 
 
 #### Using a component
@@ -1097,12 +1109,12 @@ Example:
 
 Given `people` is an array of Person
 
-```rust
-struct Name(String, String);
+```go
+type Name [2]string
 
-struct Person {
-    name: Name,
-    age: u32,
+type Person struct {
+	Name Name   `json:"name"`
+	Age  uint32 `json:"age"`
 }
 ```
 
@@ -1132,15 +1144,15 @@ Example:
 
 Given `posts` is an array of Post
 
-```rust
-struct Author {
-    name: String,
-};
+```go
+type Author struct {
+	Name string `json:"name"`
+}
 
-struct Post {
-    content: String,
-    year: u32,
-    author: Author,
+type Post struct {
+	Content string `json:"content"`
+	Year    uint32 `json:"year"`
+	Author  Author `json:"author"`
 }
 ```
 

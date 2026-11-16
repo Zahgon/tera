@@ -179,26 +179,43 @@ In templates, you can nest both inline and block components:
 ## Running the Example
 
 ```bash
-cargo run --example dashboard
+go run ./tera/examples/dashboard
 ```
 
 Or in your own code:
 
-```rust
-use tera::{Tera, Context};
+```go
+import (
+	"embed"
 
-let mut tera = Tera::default();
-tera.add_raw_template("base.html", include_str!("base.html"))?;
-tera.add_raw_template("components.html", include_str!("components.html"))?;
-tera.add_raw_template("dashboard.html", include_str!("dashboard.html"))?;
+	"github.com/Keats/tera/tera"
+)
 
-let mut context = Context::new();
-context.insert("site_name", "My Dashboard");
-context.insert("orders", &vec![/* order data */]);
-context.insert("products", &vec![/* product data */]);
-// ... more data
+//go:embed *.html
+var templates embed.FS
 
-let html = tera.render("dashboard.html", &context)?;
+func renderDashboard(orders, products []map[string]any) (string, error) {
+	engine := tera.New()
+	var sources []tera.RawTemplate
+	for _, name := range []string{"base.html", "components.html", "dashboard.html"} {
+		body, err := templates.ReadFile(name)
+		if err != nil {
+			return "", err
+		}
+		sources = append(sources, tera.RawTemplate{Name: name, Content: string(body)})
+	}
+	if err := engine.AddRawTemplates(sources); err != nil {
+		return "", err
+	}
+
+	context := tera.NewContext()
+	for key, value := range map[string]any{"site_name": "My Dashboard", "orders": orders, "products": products} {
+		if err := context.Insert(key, value); err != nil {
+			return "", err
+		}
+	}
+	return engine.Render("dashboard.html", context)
+}
 ```
 
 ## Component Reference
