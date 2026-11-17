@@ -1,3 +1,6 @@
+// Ports tera/tests/introspection.rs: test_get_component_definition,
+// negative_component_defaults_preserve_value_and_type and test_get_template_variables.
+
 package tera
 
 import (

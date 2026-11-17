@@ -1,3 +1,7 @@
+// Ports the unit tests of tera-contrib/src/format.rs: test_float_precision, test_integer_padding,
+// test_string_alignment, test_sign, test_bool, test_combined, test_huge_width_rejected and
+// test_dollar_reference_rejected.
+
 package contrib
 
 import (

@@ -1,3 +1,6 @@
+// Ports the unit tests of tera-contrib/src/rand.rs: test_get_random and test_shuffle; its test_register is part of
+// TestRegister.
+
 package contrib
 
 import (

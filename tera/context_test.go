@@ -1,3 +1,7 @@
+// Ports the unit tests of tera/src/context.rs: context_macro_builder and context_macro_can_capture_local_name
+// (TestContextBuilder: Go has no macros, so the context is built with NewContext and Insert), context_tests
+// (TestContext), context_from_serialize and context_from_serialize_non_map_fails.
+
 package tera
 
 import "testing"

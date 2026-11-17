@@ -1,3 +1,6 @@
+// Ports the cargo-fuzz targets of tera/fuzz/fuzz_targets as Go fuzz tests: expression.rs (FuzzExpression), tag.rs
+// (FuzzTag) and template.rs (FuzzTemplate).
+
 package tera
 
 import (

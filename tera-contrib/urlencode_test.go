@@ -1,3 +1,6 @@
+// Ports the unit tests of tera-contrib/src/urlencode.rs: test_urlencode and test_urlencode_strict; its test_register
+// is part of TestRegister.
+
 package contrib
 
 import "testing"

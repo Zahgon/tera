@@ -1,3 +1,7 @@
+// Ports the unit tests of tera-contrib/src/dates.rs: test_ok_date (without its localized cases, which need the CLDR
+// locale data this module does not ship), test_bad_date_call, test_is_before and test_is_after; its test_register is
+// part of TestRegister.
+
 package contrib
 
 import (
@@ -28,12 +32,18 @@ func TestOKDate(t *testing.T) {
 }
 func TestBadDateCall(t *testing.T) {
 	for _, tc := range []struct {
-		input            any
-		format, timezone string
-	}{{1482720453, "%1", ""}, {1482720453, "%+S", ""}, {"2019-09-19T01:48:44.581Z", "%+S", "Narnia"}} {
-		k := map[string]any{"format": tc.format}
+		input                    any
+		format, timezone, locale string
+	}{{1482720453, "%1", "", ""}, {1482720453, "%+S", "", ""}, {"2019-09-19T01:48:44.581Z", "%+S", "Narnia", ""}, {1482720453, "MMMM", "", "unknown"}, {1482720453, "", "", "fr"}, {1482720453, "%Y-%m-%d", "", "fr"}} {
+		k := map[string]any{}
+		if tc.format != "" {
+			k["format"] = tc.format
+		}
 		if tc.timezone != "" {
 			k["timezone"] = tc.timezone
+		}
+		if tc.locale != "" {
+			k["locale"] = tc.locale
 		}
 		checkFilterError(t, Date, tc.input, k)
 	}

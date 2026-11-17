@@ -1,3 +1,5 @@
+// Ports the unit test of tera-contrib/src/slug.rs: test_slug; its test_register is part of TestRegister.
+
 package contrib
 
 import "testing"

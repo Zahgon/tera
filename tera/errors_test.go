@@ -1,3 +1,5 @@
+// Ports the unit test of tera/src/errors.rs: test_error_is_send_and_sync (an Error shared between goroutines).
+
 package tera
 
 import (

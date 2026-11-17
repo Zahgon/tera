@@ -1,3 +1,9 @@
+// Ports the unit tests of tera/src/value: len_and_reverse_use_chars (mod.rs), can_negate and arithmetic_in_i128
+// (number.rs), bool_and_int_map_keys, float_map_key_fails, from_serializable_value_is_cloned,
+// from_serializable_nested_values_are_cloned and regular_serialization_works (ser.rs), and test_deser (de.rs,
+// TestDeserialize). len_and_reverse_use_graphemes tests the `unicode` Cargo feature, which this port does not
+// provide.
+
 package tera
 
 import (
@@ -7,6 +13,17 @@ import (
 	"testing"
 )
 
+func TestLenAndReverseUseChars(t *testing.T) {
+	v := NormalString("e\u0301cole")
+	n, ok := v.Len()
+	if !ok || n != 6 {
+		t.Fatalf("expected length 6, got %d", n)
+	}
+	out, err := v.Reverse()
+	if err != nil || out.String() != "eloc\u0301e" {
+		t.Fatalf("expected scalar reversal, got %q, %v", out.String(), err)
+	}
+}
 func TestCanNegate(t *testing.T) {
 	bound := new(big.Int).Lsh(big.NewInt(1), 127)
 	min := new(big.Int).Neg(bound)

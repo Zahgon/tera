@@ -1,3 +1,13 @@
+// Ports the unit tests of tera/src/tera.rs: global_context, can_full_reload, error_on_malformed_template_in_glob,
+// failed_full_reload_preserves_existing_templates, load_from_glob_preserves_manual_templates,
+// add_raw_template_failure_preserves_existing, rendering_invalid_utf8_bytes_does_not_panic, test_render_component,
+// add_template_file_errors_on_non_utf8_path (Unix-only there and here), custom_delimiters,
+// fallback_prefixes_resolve_templates, fallback_prefix_exact_match_takes_priority,
+// adding_template_re_resolves_lineage_properly, test_get_template_priority,
+// test_component_duplicate_error_same_priority, test_component_override_chain, test_fallback_template_resolution,
+// render_str, render_str_errors_on_extends and render_str_errors_on_blocks
+// (TestRenderStrRejectsInheritanceAndBlocks), render_str_autoescape and render_block_works.
+
 package tera
 
 import (

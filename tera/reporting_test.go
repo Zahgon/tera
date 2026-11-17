@@ -1,3 +1,5 @@
+// Ports the unit test of tera/src/reporting.rs: can_get_line_starts.
+
 package tera
 
 import (

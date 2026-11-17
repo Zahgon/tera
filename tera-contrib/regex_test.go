@@ -1,3 +1,6 @@
+// Ports the unit tests of tera-contrib/src/regex.rs: test_striptags, test_spaceless, test_matching,
+// test_regex_replace and test_regex_replace_invalid_pattern; its test_register is part of TestRegister.
+
 package contrib
 
 import (

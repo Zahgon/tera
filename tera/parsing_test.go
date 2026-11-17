@@ -1,3 +1,9 @@
+// Ports the parser tests of tera/src/snapshot_tests/parser.rs that assert values rather than snapshots:
+// parser_extends_success, and parser_can_convert_array_to_const_when_possible with
+// parser_folds_negative_numbers_to_constants (TestParserConstantArrayValues: this port evaluates the AST, so it
+// checks the parsed expression and its value instead of a folded constant). test_size of
+// tera/src/parsing/instructions.rs checks the memory size of a bytecode instruction, which this port does not have.
+
 package tera
 
 import "testing"

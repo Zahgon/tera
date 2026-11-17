@@ -1,3 +1,5 @@
+// Ports the unit test of tera/src/delimiters.rs: errors_on_invalid_delimiters.
+
 package tera
 
 import "testing"

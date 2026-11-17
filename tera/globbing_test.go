@@ -1,3 +1,9 @@
+// Ports the unit tests of tera/src/globbing.rs: can_load_from_glob and can_load_from_glob_with_patterns
+// (TestCanLoadFromGlob, one pattern each), glob_work_with_absolute_paths and
+// glob_work_with_absolute_paths_and_double_star (TestGlobWorkWithAbsolutePaths, one pattern each),
+// glob_work_with_paths_starting_with_dots, empty_list_on_invalid_glob, glob_without_directory_resolves_against_cwd
+// and glob_with_wildcard_in_directory_component.
+
 package tera
 
 import (

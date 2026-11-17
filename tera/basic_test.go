@@ -1,3 +1,9 @@
+// Ports tera/tests/basic.rs: var_access_by_square_brackets, can_get_value_if_key_contains_period,
+// var_access_by_loop_index and var_access_by_loop_index_with_set (TestVarAccessByLoopIndex, one template each),
+// rendering_include_ok (TestRenderingInclude), rendering_realistic_benchmark (against its insta snapshot, now in
+// testdata/snapshots), can_render_to_write, render_str_can_use_locally_defined_component,
+// filter_is_safe_skips_autoescape, function_is_safe_skips_autoescape and filter_not_safe_gets_autoescaped.
+
 package tera
 
 import (

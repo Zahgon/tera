@@ -1,3 +1,6 @@
+// Ports the unit tests of tera/src/template.rs: can_find_parents, detects_circular_extends and
+// nested_blocks_are_tracked.
+
 package tera
 
 import (

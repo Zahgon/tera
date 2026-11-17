@@ -1,3 +1,6 @@
+// Ports the Criterion benchmarks of tera/benches: templates.rs (BenchmarkTemplates), value.rs (BenchmarkValue) and
+// escape.rs (BenchmarkEscapeHTML), over the same templates and testdata/benches/realistic.
+
 package tera
 
 import (

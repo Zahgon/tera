@@ -1,3 +1,7 @@
+// Ports the unit tests of tera-contrib/src/base64.rs: test_b64_encode, test_b64_encode_no_padding,
+// test_b64_encode_url_safe, test_b64_decode, test_b64_decode_url_safe, test_b64_roundtrip and
+// test_b64_decode_invalid; its test_register is part of TestRegister in contrib_test.go.
+
 package contrib
 
 import (

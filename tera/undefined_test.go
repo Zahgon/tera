@@ -1,3 +1,5 @@
+// Ports tera/tests/undefined.rs: handles_undefined_correctly.
+
 package tera
 
 import "testing"

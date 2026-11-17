@@ -1,3 +1,7 @@
+// Ports the unit tests of tera/src/filters.rs: test_title, test_str, test_indent_indentation, test_int, test_float,
+// test_escape_xml, test_abs, test_round and truncate_splits_on_char_boundary. can_truncate_graphemes tests the
+// `unicode` Cargo feature, which this port does not provide.
+
 package tera
 
 import (
@@ -84,4 +88,13 @@ func TestRound(t *testing.T) {
 	checkFilter(t, "round", 2.1, map[string]any{"method": "ceil"}, 3)
 	checkFilter(t, "round", 2.9, map[string]any{"method": "floor"}, 2)
 	checkFilter(t, "round", 2.245, map[string]any{"precision": 2}, 2.25)
+}
+func TestTruncateSplitsOnCharBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		input  string
+		length int
+		want   string
+	}{{"😀test", 1, "😀…"}, {"日本語hello", 3, "日本語…"}} {
+		checkFilter(t, "truncate", tc.input, map[string]any{"length": tc.length}, tc.want)
+	}
 }

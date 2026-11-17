@@ -1,3 +1,5 @@
+// Ports the unit test of tera/src/vm/state.rs: can_handle_escaping (TestStateCanHandleEscaping).
+
 package tera
 
 import (

@@ -1,8 +1,29 @@
+// Ports the Rust snapshot tests of tera/src/snapshot_tests over the same fixtures and insta snapshots, which moved to
+// testdata/snapshot_tests:
+//   - rendering.rs: rendering_ok, rendering_components_ok, rendering_inheritance_ok, rendering_include_ok,
+//     rendering_escaping_ok, rendering_errors, rendering_inheritance_errors, rendering_components_errors and
+//     rendering_include_errors are TestRenderingSnapshots, one subtest per recorded snapshot; rendering_custom_delimiters,
+//     render_str_errors, render_capture_body_safety and inline_map_preserve_order are the tests of the same names.
+//     can_iterate_on_graphemes and can_slice_on_graphemes test the `unicode` Cargo feature, which this port does not
+//     provide.
+//   - build_errors.rs: build_errors is TestBuildErrorSnapshots.
+//   - lexer.rs: lexer_errors is TestLexerSnapshots (message and span of each recorded error); for lexer_ok it checks that
+//     every success input lexes, since those snapshots are Rust Debug dumps of the token type.
+//   - parser.rs: parser_errors is TestParserSnapshots (the recorded reports); for parser_expressions_success,
+//     parser_components_definition_success, parser_components_render_success, parser_tags_success and
+//     parser_templates_success it checks that every success input parses, since those snapshots are Rust Debug dumps of
+//     the AST. parser_extends_success, parser_can_convert_array_to_const_when_possible and
+//     parser_folds_negative_numbers_to_constants are in parsing_test.go; fuzzing_findings has no input (its only input
+//     is commented out).
+//   - compiler.rs: compiler_ok and compiler_blocks dump bytecode, which this port does not have (it evaluates the AST);
+//     TestCompilerSnapshots checks that every compiler input parses.
+
 package tera
 
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -106,10 +127,15 @@ func TestRenderingSnapshots(t *testing.T) {
 			continue
 		} // Standalone cases are exercised below.
 		t.Run(strings.TrimSuffix(filepath.Base(path), ".snap"), func(t *testing.T) {
-			if strings.HasSuffix(input, "/success/spread.txt") {
-				// The original records rendering_ok without preserve_order and disables it with that feature; this
-				// port keeps insertion order like the preserve_order build, so the printed spread maps differ.
-				t.Skip("snapshot recorded with the unordered map build")
+			// The original runs rendering_ok only without preserve_order, since map order changes some outputs. The
+			// reference build has preserve_order, like this port: where its output differs from the recorded one,
+			// the original's preserve_order output is recorded under the same name in preserve_order/.
+			expected := want
+			ordered := filepath.Join(snapshotRoot, "preserve_order", filepath.Base(path))
+			if _, err := os.Stat(ordered); err == nil {
+				_, expected = readSnapshot(t, ordered)
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				t.Fatal(err)
 			}
 			src := readTestFile(t, filepath.Join(snapshotRoot, input))
 			engine := New()
@@ -135,12 +161,12 @@ func TestRenderingSnapshots(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected rendering error; got %q", got)
 				}
-				assertSnapshot(t, err.Error(), want)
+				assertSnapshot(t, err.Error(), expected)
 			} else {
 				if err != nil {
 					t.Fatal(err)
 				}
-				assertSnapshot(t, got, want)
+				assertSnapshot(t, got, expected)
 			}
 		})
 	}

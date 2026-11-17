@@ -1,3 +1,7 @@
+// Ports the test_register unit test of the tera-contrib modules that have one (base64.rs, dates.rs,
+// filesize_format.rs, json.rs, rand.rs, regex.rs, slug.rs and urlencode.rs) as TestRegister, which registers every
+// helper and renders each once.
+
 package contrib
 
 import (

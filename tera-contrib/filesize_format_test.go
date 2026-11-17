@@ -1,3 +1,6 @@
+// Ports the unit tests of tera-contrib/src/filesize_format.rs: test_filesizeformat_binary and
+// test_filesizeformat_decimal; its test_register is part of TestRegister.
+
 package contrib
 
 import "testing"

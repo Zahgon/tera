@@ -1,3 +1,6 @@
+// Ports the unit tests of tera-contrib/src/json.rs: test_json_encode and test_json_encode_pretty; its test_register
+// is part of TestRegister.
+
 package contrib
 
 import "testing"
